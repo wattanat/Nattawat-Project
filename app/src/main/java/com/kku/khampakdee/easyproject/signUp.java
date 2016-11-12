@@ -1,22 +1,35 @@
 package com.kku.khampakdee.easyproject;
 
-import android.support.v7.app.AppCompatActivity;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
+import android.provider.MediaStore;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 
-public class signUp extends AppCompatActivity {
+import org.jibble.simpleftp.SimpleFTP;
 
-    // Explicit
-    private EditText nameEditText, phoEditText, useEditText, passEditText;
+import java.io.File;
 
+class SignUp extends AppCompatActivity {
+
+    //Explicit
+    private EditText nameEditText, phoneEditText,
+            userEditText, passwordEditText;
     private ImageView imageView;
     private Button button;
-    private  String nameSting, phoString, userString, passString;
-
+    private String nameString, phoneString, userString, passwordString,
+            imagePathString, imageNameString;
+    private Uri uri;
+    private Boolean aBoolean;
 
 
     @Override
@@ -25,39 +38,140 @@ public class signUp extends AppCompatActivity {
         setContentView(R.layout.activity_sign_up);
 
         //Bind Widget
-
-        nameEditText = (EditText) findViewById(R.id.editText4);
-        phoEditText = (EditText) findViewById(R.id.editText3);
-        useEditText = (EditText) findViewById(R.id.editText2);
-        passEditText = (EditText) findViewById(R.id.editText);
+        nameEditText = (EditText) findViewById(R.id.editText);
+        phoneEditText = (EditText) findViewById(R.id.editText2);
+        userEditText = (EditText) findViewById(R.id.editText3);
+        passwordEditText = (EditText) findViewById(R.id.editText4);
         imageView = (ImageView) findViewById(R.id.imageView);
         button = (Button) findViewById(R.id.button3);
 
-        // SignUP Controller
+
+        //SignUp Controller
         button.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(View view) {
+
                 //Get Value From Edit Text
-                nameSting = nameEditText.getText().toString().trim();
-                phoString = phoEditText.getText().toString().trim();
-                userString =  useEditText.getText().toString().trim();
-                passString = passEditText.getText().toString().trim();
+                nameString = nameEditText.getText().toString().trim();
+                phoneString = phoneEditText.getText().toString().trim();
+                userString = userEditText.getText().toString().trim();
+                passwordString = passwordEditText.getText().toString().trim();
 
-                // check Space
-                if(nameSting.equals("") || phoString.equals("") || userString.equals("") ||
-                        passString.equals("")) {
+                //Check Space
 
+                //Check Space
+                if (nameString.equals("") || phoneString.equals("") ||
+                        userString.equals("") || passwordString.equals("")) {
                     //Have Space
                     Log.d("12novV1", "Have Space");
-                    MyAlert myAlert = new MyAlert(signUp.this, R.drawable.doremon48,"มีช่องว่าง",
-                            "กรอกข้อมูลไม่ครบ ครับ!!");
+                    MyAlert myAlert = new MyAlert(SignUp.this, R.drawable.doremon48,
+                            "มีช่องว่าง", "กรุณากรอกให้ครบทุกช่องคะ");
                     myAlert.myDialog();
+                } else if (aBoolean) {
+                    //Non Choose Image
+                    MyAlert myAlert = new MyAlert(SignUp.this, R.drawable.nobita48,
+                            "ยังไม่เลือกรูป", "กรุณาเลือกรูปด้วยคะ");
+                    myAlert.myDialog();
+                } else {
+                    //Choose Image OK
+                    upLoadImageToServer();
 
                 }
 
-            }  //onclick
+
+            }   // onClick
         });
 
 
+        // Image Controller
+        imageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("image/*");
+                startActivityForResult(Intent.createChooser(intent, "โปรเลือกแอฟดูภาพ"), 0);
+
+            }   // onClick
+        });
+
+
+    }   // Main Method
+
+    private void upLoadImageToServer() {
+
+        // Check Policy
+        StrictMode.ThreadPolicy threadPolicy = new StrictMode.ThreadPolicy
+                .Builder().permitAll().build();
+        StrictMode.setThreadPolicy(threadPolicy);
+
+        try {
+
+            SimpleFTP simpleFTP = new SimpleFTP();
+            simpleFTP.connect("ftp.swiftcodingthai.com", 21, "kku@swiftcodingthai.com", "Abc12345");
+            simpleFTP.bin();
+            simpleFTP.cwd("Image");
+            simpleFTP.stor(new File(imagePathString));
+            simpleFTP.disconnect();
+
+        }catch (Exception e) {
+            Log.d("12novV1", "e simpleFTP ==>" + e.toString() );
+        }
+
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode,
+                                    int resultCode,
+                                    Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if ((requestCode == 0) && (resultCode == RESULT_OK)) {
+
+            Log.d("12novV1", "Result OK");
+
+            //Show Image
+            uri = data.getData();
+            try {
+
+                Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver()
+                        .openInputStream(uri));
+                imageView.setImageBitmap(bitmap);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            //Find Path of Image
+            imagePathString = myFindPath(uri);
+            Log.d("12novV1", "imagePath ==> " + imagePathString);
+
+            //Find Name of Image
+            imageNameString = imagePathString.substring(imagePathString.lastIndexOf("/"));
+            Log.d("12novV1", "imageName ==> " + imageNameString);
+
+
+        }   // if
+
+    }   // onActivity
+
+    private String myFindPath(Uri uri) {
+
+        String result = null;
+        String[] strings = {MediaStore.Images.Media.DATA};
+        Cursor cursor = getContentResolver().query(uri, strings, null, null, null);
+
+        if (cursor != null) {
+
+            cursor.moveToFirst();
+            int index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            result = cursor.getString(index);
+
+        } else {
+            result = uri.getPath();
+        }
+
+
+        return result;
     }
 }
