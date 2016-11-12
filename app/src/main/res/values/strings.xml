@@ -2,4 +2,7 @@
     <string name="app_name">EasyProject</string>
 
     <string name="SignUp">สมัครสมาชิก</string>
+    <string name="title_activity_signup">signup</string>
+    <string name="title_activity_sign_up_botton">signUpBotton</string>
+    <string name="title_activity_sign_up_button">signUpButton</string>
 </resources>
